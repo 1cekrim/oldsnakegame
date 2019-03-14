@@ -42,7 +42,6 @@ class Q_net:
         필터3 : 5x5x32
         필터4 : (height - 12)x(height - 12)x256 해서 1x1x256으로 만듦
         '''
-        print(input_depth)
         self.cw1_size = 5
         self.cw1_depth = 32
         self.cw1 = tf.get_variable("cw1", shape = [self.cw1_size, self.cw1_size, input_depth, self.cw1_depth], initializer = tf.contrib.layers.variance_scaling_initializer())

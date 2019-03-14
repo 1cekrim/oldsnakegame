@@ -13,5 +13,13 @@ if __name__ == "__main__":
         snake.put_food_random()
 
     snake.show_board()
+    snake.do_action(0)
+
+    snake.show_board()
+    snake.do_action(1)
+
+    snake.show_board()
+    snake.do_action(2)
+    snake.show_board()
 
     ag = Agent(snake)
