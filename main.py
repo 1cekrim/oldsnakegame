@@ -14,4 +14,4 @@ if __name__ == "__main__":
 
     snake.show_board()
 
-   # ag = Agent(snake)
+    ag = Agent(snake)
