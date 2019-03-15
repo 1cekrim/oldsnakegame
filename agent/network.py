@@ -1,6 +1,4 @@
 import tensorflow as tf
-import numpy as np
-import random as rnd
 
 class Q_net:
     def __init__(self, height, width, depth, number_of_possible_actions, frames):
@@ -86,9 +84,7 @@ class Q_net:
 
         self.targetQ = tf.placeholder(shape = [None], dtype = tf.float32)
         self.actions = tf.placeholder(shape = [None], dtype = tf.int32)
-        print(self.Q.shape)
         self.Q_action = tf.reduce_sum(tf.multiply(self.Q, tf.one_hot([ad for ad in range(0, self.number_of_possible_actions)], self.number_of_possible_actions)), reduction_indices=1)
-        print(self.Q_action)
 
         #cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y), reduction_indices=[1]))
         #train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
@@ -96,52 +92,3 @@ class Q_net:
         self.loss = tf.reduce_mean(self.error)
         self.trainer = tf.train.AdamOptimizer(learning_rate=0.0001)
         self.updateModel = self.trainer.minimize(self.loss)
-
-
-class Memory:
-    def __init__(self, max_memory_size, height, width, depth, frames, index_of_main_frame):
-        self.max_memory_size = max_memory_size
-        self.height = height
-        self.width = width
-        self.depth = depth
-        self.mem_state= np.zeros((max_memory_size, height * width, depth))
-        self.mem_reward = np.zeros((max_memory_size))
-        self.mem_action = np.zeros((max_memory_size))
-        self.frames = frames
-        self.index_of_main_frame = index_of_main_frame
-        self.index = 0
-
-    def save(self, state, action, reward):
-        self.mem_state[self.index] = state
-        self.mem_reward[self.index] = reward
-        self.mem_action[self.index] = action
-        self.index += 1
-        if (self.index >= self.max_memory_size):
-            self.index = 0
-
-    def load(self, num):
-        k = rnd.sample(range(self.index_of_main_frame, self.max_memory_size - (self.frames - self.index_of_main_frame)), num)
-        action = np.empty((num, self.frames))
-        reward = np.empty((num, self.frames))
-        state = np.empty((num, 256, 3))
-        for d in range(0, num):
-            i = k[d]
-            state[d] = self.mem_state[i - self.index_of_main_frame]
-            for n in range(0, self.frames):
-                index = i + (n - self.index_of_main_frame)
-                action[d][n] = self.mem_action[index]
-                reward[d][n] = self.mem_reward[index]
-                if (n > 0):
-                    state[d] = np.hstack([state[d], self.mem_state[index]])
-        return state, reward, action
-
-
-
-class Agent:
-    def __init__(self, env):
-        self.env = env
-        self.padding = env.padding
-        self.depth = env.depth
-        self.number_of_possible_actions = env.number_of_possible_actions
-        self.Q_main = Q_net(env.height + 2 * self.padding, env.width + 2 * self.padding, self.depth, self.number_of_possible_actions, 3)
-

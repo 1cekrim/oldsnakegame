@@ -1,6 +1,6 @@
-from env_snake import Snake
-from agent import Agent
-from agent import Memory
+from environment.env_snake import Snake
+from agent.agent import Agent
+from agent.memory import Memory
 
 height = 15
 width = 15
