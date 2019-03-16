@@ -6,7 +6,7 @@ height = 15
 width = 15
 
 if __name__ == "__main__":
-    snake = Snake(height, width)
+    snake = Snake(height, width, 10)
 
     ag = Agent(snake)
 

@@ -16,9 +16,7 @@ de = 0.99           #e의 감소율
 episodes = 1000     #에피소드의 갯수
 max_episode_length = 50 #꼬리잡기 방지
 path = "./model"    #모델 위치
-frames = 3          #한번에 넘겨줄 프레임의 수
-main_frame = 1      #현재 상태의 프레임의 index
-load_model = False  #모델을 불러오기 할 것인지
+load_model = True  #모델을 불러오기 할 것인지
 model_name = "model"#모델의 이름
 update_freq = 4     #얼마나 자주 훈련할 것인지
 update_freq_target = 100 #target이 main과 몇번마다 같아질 것인지
@@ -34,7 +32,6 @@ class Agent:
         self.number_of_possible_actions = env.number_of_possible_actions
         self.height = env.height + 2 * self.padding
         self.width = env.width + 2 * self.padding
-        self.frames = frames
 
     def get_copy_var_ops(self, *, dest_scope_name="target", src_scope_name="main"):
         '''타겟네트워크에 메인네트워크의 Weight값을 복사.
@@ -59,14 +56,37 @@ class Agent:
         print("불러오기 시작")
         if not os.path.exists(path):
             os.makedirs(path)
+            print(name + ".ckpt가 없습니다")
         saver = tf.train.Saver()
         saver.restore(sess, path + "/" + name + ".ckpt")
-        print(name + ".ckpt가 없습니다")
-    
+
+    def play(self):
+        tf.reset_default_graph()
+        main_net = Q_net(self.height, self.width, self.depth, self.number_of_possible_actions)
+        target_net = Q_net(self.height, self.width, self.depth, self.number_of_possible_actions)
+        init = tf.global_variables_initializer()
+        with tf.Session() as sess:
+            sess.run(init)
+            if load_model == True:
+                self.load(sess, model_name)
+
+            for i in range(episodes):
+                self.env.init_env()
+                j = 0
+                s = self.env.get_state()
+                while j < max_episode_length:
+                    j += 1
+                    act = sess.run(main_net.selected_action, feed_dict={main_net.input_data_set: [s]})[0]
+                    st, a, r, end = self.env.do_action(act)
+                    self.env.show_board()
+                    s = st
+                    if end:
+                        break
+
     def train(self):
         tf.reset_default_graph()
-        main_net = Q_net(self.height, self.width, self.depth, self.number_of_possible_actions, self.frames)
-        target_net = Q_net(self.height, self.width, self.depth, self.number_of_possible_actions, self.frames)
+        main_net = Q_net(self.height, self.width, self.depth, self.number_of_possible_actions)
+        target_net = Q_net(self.height, self.width, self.depth, self.number_of_possible_actions)
 
         init = tf.global_variables_initializer()
 
@@ -80,7 +100,7 @@ class Agent:
             sess.run(self.get_copy_var_ops(dest_scope_name="target_net", src_scope_name="main_net"))
 
             for i in range(episodes):
-                mem = Memory(1000, self.height, self.width, self.depth, self.frames, 1)
+                mem = Memory(1000, self.height, self.width, self.depth)
                 self.env.init_env()
                 j = 0
                 s = self.env.get_state()
@@ -89,26 +109,26 @@ class Agent:
                     if np.random.rand(1) < e:
                         act = np.random.randint(0, self.number_of_possible_actions)
                     else:
-                        act = sess.run(main_net.selected_action, feed_dict={main_net.input_data_set: s})[0]
+                        act = sess.run(main_net.selected_action, feed_dict={main_net.input_data_set: [s]})[0]
                     st, a, r, end = self.env.do_action(act)
                     mem.save(s, a, r, st, end)
                     steps += 1
                     if e > min_e:
                         e *= de
                     elif steps % update_freq == 0:
-                        state_batch, action_batch, reward_batch, state_new_batch, end_batch = mem.load(batch_size)
+                        bs = min(batch_size, mem.max_index)
+                        state_batch, action_batch, reward_batch, state_new_batch, end_batch = mem.load(bs)
 
                         Q1 = sess.run(main_net.selected_action, feed_dict={main_net.input_data_set: state_new_batch})
                         Q2 = sess.run(target_net.Q, feed_dict={target_net.input_data_set: state_new_batch})
-                        dQ = Q2[range(batch_size), Q1]
+                        dQ = Q2[range(bs), Q1]
                         em = []
-                        for k in range(0, batch_size):
+                        for k in range(0, bs):
                             if not end_batch[k]:
                                 em.append(1)
                             else:
                                 em.append(0)
                         tQ = reward_batch + (y * dQ * em)
-
                         _ = sess.run(main_net.updateModel, \
                             feed_dict={main_net.input_data_set: state_batch, main_net.targetQ: tQ, main_net.actions: action_batch})
                     if e <= min_e and steps % update_freq_target == 0:
@@ -120,9 +140,9 @@ class Agent:
 
                 jList.append(j)
                 rList.append(r_all)
-                if (i % (episodes // 10)):
+                if (i % (episodes // 10) == 0):
                     self.save(sess, model_name)
-                if len(rList % 5 == 0):
+                if len(rList) % 10 == 0:
                     print(steps, np.mean(rList[-10:]), e)
             self.save(sess, model_name)
         print("완료: " + str(sum(rList) / episodes))

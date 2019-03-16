@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 
 class Q_net:
-    def __init__(self, height, width, depth, number_of_possible_actions, frames):
+    def __init__(self, height, width, depth, number_of_possible_actions):
         '''
         #self.input_data = tf.placeholder(shape = [height * width, depth], dtype = tf.int32)
         #self.input_data = tf.reshape(input_data, shape = [height, width, depth])
@@ -27,12 +27,10 @@ class Q_net:
         self.width = width
         self.depth = depth
         self.number_of_possible_actions = number_of_possible_actions
-        self.frames = frames
 
-        input_depth = depth * frames
+        input_depth = depth
         self.input_data_set = tf.placeholder(shape = [None, height * width, input_depth], dtype = tf.float32)
         self.input_data = tf.reshape(self.input_data_set, shape = [-1, height, width, input_depth])
-        #self.input_data = self.input_data_a.reshape(-1, height * width, input_depth * frames)
 
         '''
         height, width가 들어오면
@@ -85,7 +83,8 @@ class Q_net:
 
         self.targetQ = tf.placeholder(shape = [None], dtype = tf.float32)
         self.actions = tf.placeholder(shape = [None], dtype = tf.int32)
-        self.Q_action = tf.reduce_sum(tf.multiply(self.Q, tf.one_hot([ad for ad in range(0, self.number_of_possible_actions)], self.number_of_possible_actions)), reduction_indices=1)
+        self.actions_onehot = tf.one_hot(self.actions, self.number_of_possible_actions, dtype=tf.float32)
+        self.Q_action = tf.reduce_sum(tf.multiply(self.Q, self.actions_onehot), axis=1) # reduction_indices=1, tf.one_hot([ad for ad in range(0, self.number_of_possible_actions)]
 
         #cross_entropy = tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(y), reduction_indices=[1]))
         #train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
