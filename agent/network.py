@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 class Q_net:
     def __init__(self, height, width, depth, number_of_possible_actions, frames):
@@ -29,8 +30,8 @@ class Q_net:
         self.frames = frames
 
         input_depth = depth * frames
-        self.input_data_a = tf.placeholder(shape = [None, height * width, input_depth], dtype = tf.float32)
-        self.input_data = tf.reshape(self.input_data_a, shape = [-1, height, width, input_depth])
+        self.input_data_set = tf.placeholder(shape = [None, height * width, input_depth], dtype = tf.float32)
+        self.input_data = tf.reshape(self.input_data_set, shape = [-1, height, width, input_depth])
         #self.input_data = self.input_data_a.reshape(-1, height * width, input_depth * frames)
 
         '''
@@ -42,29 +43,29 @@ class Q_net:
         '''
         self.cw1_size = 5
         self.cw1_depth = 32
-        self.cw1 = tf.get_variable("cw1", shape = [self.cw1_size, self.cw1_size, input_depth, self.cw1_depth], initializer = tf.contrib.layers.variance_scaling_initializer())
-        self.cb1 = tf.get_variable("cb1", shape = [self.cw1_depth], initializer = tf.contrib.layers.variance_scaling_initializer())
+        self.cw1 = tf.Variable(tf.random_normal([self.cw1_size, self.cw1_size, input_depth, self.cw1_depth], stddev=1) / np.sqrt(self.cw1_size * self.cw1_size / 2))
+        self.cb1 = tf.Variable(tf.zeros([self.cw1_depth]))
         self.conv1 = tf.nn.conv2d(self.input_data, self.cw1, strides = [1, 1, 1, 1], padding='VALID') + self.cb1
         self.conv1 = tf.nn.relu(self.conv1)
 
         self.cw2_size = 5
         self.cw2_depth = 64
-        self.cw2 = tf.get_variable("cw2", shape = [self.cw2_size, self.cw2_size, self.cw1_depth, self.cw2_depth], initializer = tf.contrib.layers.variance_scaling_initializer())
-        self.cb2 = tf.get_variable("cb2", shape = [self.cw2_depth], initializer = tf.contrib.layers.variance_scaling_initializer())
+        self.cw2 = tf.Variable(tf.random_normal([self.cw2_size, self.cw2_size, self.cw1_depth, self.cw2_depth], stddev=1) / np.sqrt(self.cw2_size * self.cw2_size / 2))
+        self.cb2 = tf.Variable(tf.zeros([self.cw2_depth]))
         self.conv2 = tf.nn.conv2d(self.conv1, self.cw2, strides = [1, 1, 1, 1], padding='VALID') + self.cb2
         self.conv2 = tf.nn.relu(self.conv2)
 
         self.cw3_size = 5
         self.cw3_depth = 128
-        self.cw3 = tf.get_variable("cw3", shape = [self.cw3_size, self.cw3_size, self.cw2_depth, self.cw3_depth], initializer = tf.contrib.layers.variance_scaling_initializer())
-        self.cb3 = tf.get_variable("cb3", shape = [self.cw3_depth], initializer = tf.contrib.layers.variance_scaling_initializer())
+        self.cw3 = tf.Variable(tf.random_normal([self.cw3_size, self.cw3_size, self.cw2_depth, self.cw3_depth], stddev=1) / np.sqrt(self.cw3_size * self.cw3_size / 2))
+        self.cb3 = tf.Variable(tf.zeros([self.cw3_depth]))
         self.conv3 = tf.nn.conv2d(self.conv2, self.cw3, strides = [1, 1, 1, 1], padding='VALID') + self.cb3
         self.conv3 = tf.nn.relu(self.conv3)
         
         self.cw4_size = self.height - 12
         self.cw4_depth = 256
-        self.cw4 = tf.get_variable("cw4", shape = [self.cw4_size, self.cw4_size, self.cw3_depth, self.cw4_depth], initializer = tf.contrib.layers.variance_scaling_initializer())
-        self.cb4 = tf.get_variable("cb4", shape = [self.cw4_depth], initializer = tf.contrib.layers.variance_scaling_initializer())
+        self.cw4 = tf.Variable(tf.random_normal([self.cw4_size, self.cw4_size, self.cw3_depth, self.cw4_depth], stddev=1) / np.sqrt(self.cw4_size * self.cw4_size / 2))
+        self.cb4 = tf.Variable(tf.zeros([self.cw4_depth]))
         self.conv4 = tf.nn.conv2d(self.conv3, self.cw4, strides = [1, 1, 1, 1], padding='VALID') + self.cb4
         self.conv4 = tf.nn.relu(self.conv4)
         
@@ -73,8 +74,8 @@ class Q_net:
         wv = 게임 전체의 유리함을 판단하는 신경망
         '''
         self.stream = tf.reshape(self.conv4, shape = [-1, self.cw4_depth])
-        self.wa = tf.get_variable("wa", shape = [self.cw4_depth, self.number_of_possible_actions], initializer = tf.contrib.layers.variance_scaling_initializer())
-        self.wv = tf.get_variable("wv", shape = [self.cw4_depth, 1], initializer = tf.contrib.layers.variance_scaling_initializer())
+        self.wa = tf.Variable(tf.random_normal([self.cw4_depth, self.number_of_possible_actions], stddev=1) / np.sqrt(self.cw4_depth / 2))
+        self.wv = tf.Variable(tf.random_normal([self.cw4_depth, 1], stddev=1) / np.sqrt(self.cw4_depth / 2))
 
         self.adventage = tf.matmul(self.stream, self.wa)
         self.value = tf.matmul(self.stream, self.wv)

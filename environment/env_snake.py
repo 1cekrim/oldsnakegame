@@ -9,9 +9,9 @@ class Snake:
     def __init__(self, height, width):
         self.height = height + 2
         self.width = width + 2
-        self.init_board()
+        self.init_env()
 
-    def init_board(self):
+    def init_env(self):
         self.board = np.zeros((3, self.height, self.width))
         self.direction = 0
         self.body = []
